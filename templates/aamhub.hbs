@@ -1,0 +1,29 @@
+<div class="jt-app jt-card" style="display:flex; flex-direction:column; height:100%;">
+  <header class="jt-row" style="justify-content:space-between; align-items:center; margin-bottom:8px;">
+    <div class="jt-title">PC/NPC Generator</div>
+    <nav class="tabs jt-row" data-group="aam-tabs" style="gap:8px;">
+      <a class="item" data-tab="ability">Abilities</a>
+      <a class="item" data-tab="classes">Classes</a>
+    </nav>
+  </header>
+
+  <div class="jt-row" style="gap:8px; align-items:center; margin-bottom:6px;">
+    <label style="min-width:7rem;">Target Actor</label>
+    <input class="jt-input mono" type="text" name="hubActorId" placeholder="(optional) paste Actor ID or UUID" value="{{targetRaw}}" />
+    <button type="button" class="jt-button" data-action="pick-actor" title="Pick from Actors Directory">Pick</button>
+    <span class="jt-muted">Leave blank to use the selected token</span>
+  </div>
+
+  <section class="tab-content jt-card" style="flex:1 1 auto; overflow:auto;">
+    <div class="tab" data-tab="ability" id="tab-ability">
+      {{{abilityHtml}}}
+    </div>
+    <div class="tab" data-tab="classes" id="tab-classes">
+      {{{classAssignerHtml}}}
+    </div>
+  </section>
+
+  <div data-resize-handle title="Drag to resize" style="position:absolute; right:10px; bottom:10px; width:16px; height:16px; cursor:se-resize; opacity:.4;">
+    <svg viewBox="0 0 16 16" width="16" height="16"><path fill="currentColor" d="M3 13h2v2H3v-2zm4-4h2v2H7V9zm4-4h2v2h-2V5z"/></svg>
+  </div>
+</div>

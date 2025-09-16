@@ -1,0 +1,54 @@
+:root {
+  --jt-bg: #111318;
+  --jt-panel: #1b1f27;
+  --jt-accent: #7dcfff;
+  --jt-accent2: #a6e3a1;
+  --jt-fg: #e6edf3;
+  --jt-muted: #9aa5b1;
+  --jt-border: #2a3140;
+  --jt-radius: 12px;
+  --jt-shadow: 0 10px 30px rgba(0,0,0,.4);
+}
+
+.jt-app .window-content {
+  background: var(--jt-bg);
+  color: var(--jt-fg);
+  padding: 12px 14px;
+}
+
+.jt-card {
+  background: var(--jt-panel);
+  border: 1px solid var(--jt-border);
+  border-radius: var(--jt-radius);
+  box-shadow: var(--jt-shadow);
+  padding: 12px;
+}
+
+.jt-title {
+  font-size: 18px;
+  margin-bottom: 6px;
+  color: var(--jt-accent);
+}
+
+.jt-grid { display:grid; gap:10px; }
+.jt-row { display:flex; gap:10px; align-items:center; }
+.jt-grow { flex: 1 1 auto; }
+
+.jt-input, .jt-select, .jt-button {
+  width: 100%;
+  background: #10141b;
+  color: var(--jt-fg);
+  border: 1px solid var(--jt-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+
+.jt-button {
+  cursor: pointer;
+  transition: transform .04s ease;
+}
+.jt-button:hover { border-color: var(--jt-accent2); }
+.jt-button:active { transform: translateY(1px); }
+
+.jt-muted { color: var(--jt-muted); font-size: 12px; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }

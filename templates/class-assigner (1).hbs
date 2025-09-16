@@ -1,0 +1,61 @@
+<div class="jt-app jt-card jt-grid" style="gap:12px;">
+  <div class="jt-title">Class Assigner</div>
+
+  <div class="jt-row" style="gap:8px;">
+    <input class="jt-input" type="search" name="search" placeholder="Filter class lists..." />
+    <span class="jt-muted">Use the search to filter all dropdowns.</span>
+  </div>
+
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-title" style="font-size:14px;">Base Class</div>
+    <div class="jt-row">
+      <select class="jt-select class-select" name="baseSel">
+        <optgroup label="Base">
+          {{{baseOptions}}}
+        </optgroup>
+      </select>
+      <input class="jt-input" type="number" name="baseLvl" min="1" placeholder="Level" />
+    </div>
+  </section>
+
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-row" style="justify-content:space-between; align-items:center;">
+      <div class="jt-title" style="font-size:14px;">Prestige Class</div>
+      <label class="jt-muted"><input type="checkbox" name="usePrestige" /> Use prestige</label>
+    </div>
+    <div class="jt-row">
+      <select class="jt-select class-select" name="prestigeSel">
+        <optgroup label="Prestige">
+          {{{prestigeOptions}}}
+        </optgroup>
+      </select>
+      <input class="jt-input" type="number" name="prestigeLvl" min="1" placeholder="Level" />
+    </div>
+  </section>
+
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-title" style="font-size:14px;">Additional Classes (up to 4)</div>
+    <div id="jt-extra-rows">
+      {{{extraRows}}}
+    </div>
+  </section>
+
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-row" style="gap:16px; align-items:center;">
+      <label class="jt-muted"><input type="checkbox" name="wipeFirst" /> Remove existing classes first</label>
+      <label class="jt-muted"><input type="checkbox" name="enforceCap" checked /> Enforce total level cap</label>
+      <span id="jt-level-summary" class="mono" style="margin-left:auto;">Total Levels: <b>0</b> / Cap 20</span>
+    </div>
+  </section>
+
+  <div class="jt-row" style="justify-content:flex-end;">
+    <button type="button" class="jt-button" data-action="assign">Assign to Selected Actor</button>
+  </div>
+
+  {{#if _emptyMessage}}
+    <div class="jt-card" data-empty-state>
+      <div class="jt-title">Nothing to show</div>
+      <div class="jt-muted">{{_emptyMessage}}</div>
+    </div>
+  {{/if}}
+</div>

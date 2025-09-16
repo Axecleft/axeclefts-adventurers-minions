@@ -1,0 +1,116 @@
+/* styles/class-assigner.css
+   Scope all rules to your app so we don't affect other UIs. */
+
+.jt-app {
+  color: var(--jt-fg, #e6edf3);
+}
+
+/* ---------- Inputs (search + level fields) ---------- */
+.jt-app input[type="text"],
+.jt-app input[type="number"],
+.jt-app input[type="search"],
+.jt-app .jt-input {
+  background: #1e1e1e;
+  color: #f5f5f5;
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 8px;
+  line-height: 1.4em;              /* prevent clipping */
+  box-sizing: border-box;
+}
+
+.jt-app input::placeholder {
+  color: #9aa5b1;
+  opacity: 1;
+}
+
+.jt-app input:focus {
+  outline: 2px solid #7dcfff55;
+  border-color: #7dcfff;
+}
+
+/* ---------- Selects (dropdowns) ---------- */
+.jt-app select,
+.jt-app .jt-select {
+  background: #1e1e1e;
+  color: #f5f5f5;                   /* readable light text on dark */
+  border: 1px solid #555;
+  border-radius: 6px;
+  padding: 4px 8px;
+  line-height: 1.45em;              /* taller line height = no cut-off descenders */
+  min-height: 1.95em;               /* ensure visible box height */
+  box-sizing: border-box;
+  max-width: 100%;
+}
+
+/* Option rows inside dropdown */
+.jt-app select option,
+.jt-app .jt-select option {
+  background: #1e1e1e;
+  color: #f5f5f5;
+  padding: 4px 8px;
+  line-height: 1.5em;               /* extra breathing room to avoid clipping */
+}
+
+/* Some browsers support optgroup styling */
+.jt-app select optgroup[label],
+.jt-app .jt-select optgroup[label] {
+  color: #b8c0cc;
+  font-style: normal;
+}
+
+/* Focus state for selects */
+.jt-app select:focus,
+.jt-app .jt-select:focus {
+  outline: 2px solid #7dcfff55;
+  border-color: #7dcfff;
+}
+
+/* Disabled states */
+.jt-app input[disabled],
+.jt-app select[disabled] {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* ---------- Buttons ---------- */
+.jt-app .jt-button {
+  background: #23262d;
+  color: #f5f5f5;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 6px 10px;
+  line-height: 1.4em;
+  cursor: pointer;
+  transition: transform .04s ease, border-color .12s ease;
+}
+
+.jt-app .jt-button:hover {
+  border-color: #a6e3a1;
+}
+
+.jt-app .jt-button:active {
+  transform: translateY(1px);
+}
+
+/* ---------- Utility ---------- */
+.jt-app .jt-row { align-items: center; }
+.jt-app .jt-muted { color: #9aa5b1; }
+
+/* “(no matches)” placeholder option inserted by JS */
+.jt-app select option[disabled][selected] {
+  color: #9aa5b1;
+}
+
+/* Optional: keep very long dropdowns usable (browser-dependent) */
+.jt-app select {
+  /* Allows the OS dropdown to remain manageable when many options exist */
+  max-height: 320px;  /* has effect in some engines (e.g., Firefox) */
+  overflow-y: auto;
+}
+
+/* If your OS/theme draws tan text in native controls, force rendering color */
+.jt-app select,
+.jt-app option {
+  -webkit-text-fill-color: currentColor; /* Safari/WebKit */
+}
