@@ -24,7 +24,8 @@
   "esmodules": [],
   "packs": [],
   "socket": false,
-  "manifest": "",
+  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/releases/download/1.0.0/module.json",
   "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.0.zip"
 }
+
 
