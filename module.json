@@ -18,14 +18,14 @@
   "languages": [
     { "lang": "en", "name": "English", "path": "lang/en.json" }
   ],
-  "url": "",
+  "url": "https://github.com/Axecleft/axeclefts-adventurers-minions",
   "bugs": "",
   "readme": "README.md",
   "esmodules": [],
   "packs": [],
   "socket": false,
-  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/releases/download/1.0.0/module.json",
-  "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.0.zip"
+  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/blob/main/module.json",
+  "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.1.zip"
 }
 
 
