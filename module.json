@@ -2,9 +2,16 @@
   "id": "axeclefts-adventurers-minions",
   "title": "Axecleft's Adventurer and Minion Generation Tools",
   "description": "A unified toolkit for D35E SRD PC/NPC creation.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "compatibility": { "minimum": "11", "verified": "11.315" },
-  "authors": [{ "name": "Axecleft", "url": "" }],
+  "authors": [
+     {
+       "name": "Axecleft", "url": ""
+     },
+     {
+       "name": "ChatGPT ver. 5", "url": "chatgpt.com"
+     }
+  ],
   "scripts": [
     "scripts/main.js",
     "scripts/apps/AbilityAssigner.js",
@@ -24,8 +31,8 @@
   "esmodules": [],
   "packs": [],
   "socket": false,
-  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/blob/main/module.json",
-  "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.1.zip"
+  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/releases/latest/download/module.json",
+  "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.2.zip"
 }
 
 

@@ -16,79 +16,92 @@ class JT_ClassAssigner extends Application {
     return super.render(force, options);
   }
 
-  /* ---------- Local helpers (no foundry.utils.escapeHTML calls) ---------- */
+  // noisy logs until this stabilizes
+  _log(...a){ console.log("[AAM ClassAssigner]", ...a); }
+
   _ESC(s) {
     try { return Handlebars?.Utils?.escapeExpression(s ?? ""); } catch {}
-    const d = document.createElement("div");
-    d.textContent = String(s ?? "");
-    return d.innerHTML;
+    const d = document.createElement("div"); d.textContent = String(s ?? ""); return d.innerHTML;
   }
   _isOwner(doc) {
     const OWN = (foundry?.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER);
     return !!(doc?.testUserPermission?.(game.user, OWN) ?? doc?.isOwner);
   }
 
-  /** Packs limited to D35E.classes and any pack named "Classes" */
-  _eligiblePacks() {
+  /* ------------------------- classification helpers ------------------------- */
+  _readClassTypeLoose(src) {
+    const sys   = src?.system ?? src?.data ?? {};
+    const flags = src?.flags ?? sys?.flags ?? {};
+    const cand = [
+      sys.classType,
+      sys?.data?.classType,
+      src?.data?.data?.classType,
+      flags?.d35e?.classType,
+      src?.classType
+    ];
+    const raw = cand.find(v => v !== undefined && v !== null && v !== "");
+    return String(raw ?? "").toLowerCase();
+  }
+  _looksLike(ct) { return ["base","prestige","minion","racial","template"].includes(ct); }
+  _toBucket(itemDoc) {
+    const t = String(itemDoc?.type || "").toLowerCase();
+    let ct = this._readClassTypeLoose(itemDoc);
+    if (!this._looksLike(ct)) ct = "";
+    if (!ct) { if (t === "class") ct = "base"; else return null; }
+    if (ct === "template") return null;
+    return ct;
+  }
+
+  _wantedPacks() {
     const packs = game.packs ?? [];
-    return packs
+    const TITLE = new Set(["classes","minion classes","racial hd"]);
+    const keep = packs
       .filter(p => p.documentName === "Item")
       .filter(p => {
         const title = (p.title || p.metadata?.label || "").toLowerCase();
         const coll  = (p.collection || "").toLowerCase();
-        if (coll === "d35e.classes") return true;
-        if (coll.endsWith(".classes")) return true;
-        if (title === "classes") return true;
-        return false;
+        return coll === "d35e.classes" || coll.endsWith(".classes") || TITLE.has(title);
       })
       .sort((a,b)=> (a.title||a.collection).localeCompare(b.title||b.collection));
+    this._log("Eligible packs:", keep.map(p => p.collection));
+    return keep;
   }
 
-  /** Create <option> HTML from an entry (uses _ESC) */
-  _opt(name, uuid, disabled=false) {
-    const dn = this._ESC(name ?? "Unnamed");
-    const du = this._ESC(uuid ?? "");
-    return `<option value="${du}" ${disabled ? "disabled" : ""}>${dn}</option>`;
-  }
-
-  /** Heuristic prestige classifier when index lacks full data */
-  _isPrestigeish(entryName="") {
-    const n = String(entryName).toLowerCase();
-    return n.includes("prestige") || n.includes("(prc)") || n.includes("[prc]");
-  }
-
-  /** Load class index from eligible packs */
-  async _loadClassOptions() {
-    const base = [];
-    const prest = [];
-
-    const packs = this._eligiblePacks();
-    for (const p of packs) {
-      try {
-        const idx = await p.getIndex({ fields: ["name", "type", "img"] });
-        for (const it of idx) {
-          const name = it.name || "Unnamed";
-          // be permissive across 3.5e packs
-          const looksLikeClass = (String(it.type || "").toLowerCase() === "class") || true;
-          if (!looksLikeClass) continue;
-          const uuid = `Compendium.${p.collection}.${it._id || it.id}`;
-          if (this._isPrestigeish(name)) prest.push({ name, uuid });
-          else base.push({ name, uuid });
-        }
-      } catch (e) {
-        console.warn("ClassAssigner | Failed indexing pack", p.collection, e);
-      }
+  async _scanWorldItems() {
+    const items = game.items ?? [];
+    const buckets = { base: [], prestige: [], minion: [], racial: [] };
+    for (const it of items) {
+      const b = this._toBucket(it);
+      if (!b) continue;
+      buckets[b].push({ name: it.name || "Unnamed", uuid: it.uuid });
     }
-
-    base.sort((a,b)=> a.name.localeCompare(b.name));
-    prest.sort((a,b)=> a.name.localeCompare(b.name));
-
-    const baseOptions = base.map(o => this._opt(o.name, o.uuid)).join("") || `<option disabled>(no matches)</option>`;
-    const prestigeOptions = prest.map(o => this._opt(o.name, o.uuid)).join("") || `<option disabled>(no matches)</option>`;
-    return { baseOptions, prestigeOptions };
+    this._log("World items:", Object.fromEntries(Object.entries(buckets).map(([k,v])=>[k,v.length])));
+    return buckets;
   }
 
-  /** Build 0..4 extra class rows with same options (filled post-render) */
+  async _scanPack(p) {
+    const buckets = { base: [], prestige: [], minion: [], racial: [] };
+    let docs = [];
+    try { docs = await p.getDocuments(); }
+    catch (e) { console.warn("[AAM ClassAssigner] getDocuments failed:", p.collection, e); }
+    for (const d of docs) {
+      const b = this._toBucket(d);
+      if (!b) continue;
+      const uuid = `Compendium.${p.collection}.${d.id}`;
+      buckets[b].push({ name: d.name || "Unnamed", uuid });
+    }
+    this._log("Pack scan:", p.collection, Object.fromEntries(Object.entries(buckets).map(([k,v])=>[k,v.length])));
+    return buckets;
+  }
+
+  _mergeBuckets(into, from) {
+    for (const k of Object.keys(into)) into[k].push(...(from[k]||[]));
+  }
+  _bucketToHtml(arr) {
+    if (!arr.length) return `<option disabled>(no matches)</option>`;
+    arr.sort((a,b)=> a.name.localeCompare(b.name));
+    return arr.map(o => `<option value="${this._ESC(o.uuid)}">${this._ESC(o.name)}</option>`).join("");
+  }
   _extraRowsHtml() {
     const mk = (i) => `
       <div class="jt-row" data-extra="${i}">
@@ -102,40 +115,47 @@ class JT_ClassAssigner extends Application {
     return [0,1,2,3].map(mk).join("");
   }
 
-  async getData() {
-    const { baseOptions, prestigeOptions } = await this._loadClassOptions();
-    const extraRows = this._extraRowsHtml();
-
-    // Level cap default from settings (fallback 20)
-    let cap = 20;
-    try { cap = Number(game.settings.get("axeclefts-adventurers-minions", "levelCap")) || 20; } catch {}
-
+  async _loadClassOptions() {
+    const total = { base: [], prestige: [], minion: [], racial: [] };
+    this._mergeBuckets(total, await this._scanWorldItems());
+    for (const p of this._wantedPacks()) this._mergeBuckets(total, await this._scanPack(p));
+    this._log("Totals:", Object.fromEntries(Object.entries(total).map(([k,v])=>[k,v.length])));
     return {
-      baseOptions,
-      prestigeOptions,
-      extraRows,
-      _emptyMessage: null,
-      levelCap: cap
+      baseOptions:     this._bucketToHtml(total.base),
+      prestigeOptions: this._bucketToHtml(total.prestige),
+      minionOptions:   this._bucketToHtml(total.minion),
+      racialOptions:   this._bucketToHtml(total.racial)
     };
   }
 
-  /** Apply the same 'All' list to extra selects (so search filters affect all) */
-  _applyOptionsToAllSelects(html) {
-    const baseHTML  = html.find('select[name="baseSel"] optgroup[label="Base"]').html() || "";
-    const prestHTML = html.find('select[name="prestigeSel"] optgroup[label="Prestige"]').html() || "";
-    const unifiedOptions = (baseHTML + prestHTML) || `<option disabled>(no matches)</option>`;
-    html.find('#jt-extra-rows select.class-select').each((_, el) => {
-      $(el).html(`<optgroup label="All">${unifiedOptions}</optgroup>`);
-    });
+  async getData() {
+    // keep getData light; we’ll inject options after render
+    let cap = 20; try { cap = Number(game.settings.get("axeclefts-adventurers-minions", "levelCap")) || 20; } catch {}
+    return { extraRows: this._extraRowsHtml(), _emptyMessage: null, levelCap: cap };
   }
 
-  /** Build options for base/prestige selects from strings (provided by getData) */
-  _injectInitialOptions(html, baseOptions, prestigeOptions) {
-    html.find('select[name="baseSel"]').html(`<optgroup label="Base">${baseOptions}</optgroup>`);
-    html.find('select[name="prestigeSel"]').html(`<optgroup label="Prestige">${prestigeOptions}</optgroup>`);
+  /* ------------------------------- wiring ------------------------------- */
+  _injectInitialOptions(html, data) {
+    html.find('select[name="baseSel"]').html(`<optgroup label="Base">${data.baseOptions}</optgroup>`);
+    html.find('select[name="prestigeSel"]').html(`<optgroup label="Prestige">${data.prestigeOptions}</optgroup>`);
+    html.find('select[name="minionSel"]').html(`<optgroup label="Minion">${data.minionOptions}</optgroup>`);
+    html.find('select[name="racialSel"]').html(`<optgroup label="Racial">${data.racialOptions}</optgroup>`);
   }
 
-  /** Simple search filter: filters visible <option> across all selects */
+  // NEW: group the Additional Classes menu by type
+  _hasRealOptions(htmlStr) {
+    return /<option\s+value=/.test(String(htmlStr || ""));
+  }
+  _applyExtraOptionsGrouped(html, opts) {
+    const parts = [];
+    if (this._hasRealOptions(opts.baseOptions))     parts.push(`<optgroup label="Base">${opts.baseOptions}</optgroup>`);
+    if (this._hasRealOptions(opts.prestigeOptions)) parts.push(`<optgroup label="Prestige">${opts.prestigeOptions}</optgroup>`);
+    if (this._hasRealOptions(opts.minionOptions))   parts.push(`<optgroup label="Minion">${opts.minionOptions}</optgroup>`);
+    if (this._hasRealOptions(opts.racialOptions))   parts.push(`<optgroup label="Racial">${opts.racialOptions}</optgroup>`);
+    const groupedHTML = parts.length ? parts.join("") : `<option disabled>(no matches)</option>`;
+    html.find('#jt-extra-rows select.class-select').each((_, el) => { $(el).html(groupedHTML); });
+  }
+
   _wireSearch(html) {
     const $search = html.find('input[name="search"]');
     const doFilter = () => {
@@ -158,7 +178,36 @@ class JT_ClassAssigner extends Application {
     doFilter();
   }
 
-  /** Read current selections into an array of {uuid, level} */
+  _getTargetActorSync() { return window.AAM?.getCurrentTargetActor?.() || null; }
+  async _getTargetActor() { return await (window.AAM?.resolveTargetActor?.() ?? (async ()=>null)()); }
+
+  _readExistingClasses(actor) {
+    if (!actor) return { list: [], total: 0 };
+    const items = actor.items.filter(i => String(i.type).toLowerCase() === "class");
+    const list  = items.map(i => ({ name: i.name, level: Number(i.system?.level ?? i.system?.levels ?? 0) || 0 }));
+    const total = list.reduce((t,r)=> t + (r.level||0), 0);
+    return { list, total };
+  }
+
+  _renderExistingUI(html, existing) {
+    const $wrap = html.find("#jt-existing-classes");
+    if (!existing.list.length) { $wrap.html(`<em>No existing classes on target.</em>`); return; }
+    const rows = existing.list
+      .sort((a,b)=> a.name.localeCompare(b.name))
+      .map(x => `<span class="mono">${this._ESC(x.name)}: <b>${x.level}</b></span>`);
+    $wrap.html(rows.join(" &nbsp; "));
+  }
+
+  _updateSummary(html, { existingTotal, newTotal, cap, wipeFirst, enforce }) {
+    const effExisting = wipeFirst ? 0 : existingTotal;
+    const total = effExisting + newTotal;
+    html.find("#jt-existing-count").text(String(effExisting));
+    html.find("#jt-new-count").text(String(newTotal));
+    html.find("#jt-total-count").text(String(total));
+    if (enforce && cap && total > cap) html.find("#jt-total-count").css("color", "#ff6b6b");
+    else html.find("#jt-total-count").css("color", "");
+  }
+
   _readSelections(html) {
     const rows = [];
     const push = (uuid, lvl) => {
@@ -168,27 +217,25 @@ class JT_ClassAssigner extends Application {
       rows.push({ uuid, level });
     };
 
-    const baseUuid = html.find('select[name="baseSel"]').val();
-    const baseLvl  = html.find('input[name="baseLvl"]').val();
-    push(baseUuid, baseLvl);
+    // Base
+    push(html.find('select[name="baseSel"]').val(), html.find('input[name="baseLvl"]').val());
 
+    // Optional buckets
+    const useMinion   = html.find('input[name="useMinion"]')[0]?.checked ?? false;
     const usePrestige = html.find('input[name="usePrestige"]')[0]?.checked ?? false;
-    if (usePrestige) {
-      const pUuid = html.find('select[name="prestigeSel"]').val();
-      const pLvl  = html.find('input[name="prestigeLvl"]').val();
-      push(pUuid, pLvl);
-    }
+    const useRacial   = html.find('input[name="useRacial"]')[0]?.checked ?? false;
 
+    if (useMinion)   push(html.find('select[name="minionSel"]').val(),   html.find('input[name="minionLvl"]').val());
+    if (usePrestige) push(html.find('select[name="prestigeSel"]').val(), html.find('input[name="prestigeLvl"]').val());
+    if (useRacial)   push(html.find('select[name="racialSel"]').val(),   html.find('input[name="racialLvl"]').val());
+
+    // Extras (grouped list already filled)
     for (let i=0; i<4; i++) {
-      const eUuid = html.find(`select[name="extraSel_${i}"]`).val();
-      const eLvl  = html.find(`input[name="extraLvl_${i}"]`).val();
-      push(eUuid, eLvl);
+      push(html.find(`select[name="extraSel_${i}"]`).val(), html.find(`input[name="extraLvl_${i}"]`).val());
     }
-
     return rows;
   }
 
-  /** Resolve class documents from compendium UUIDs */
   async _fetchClassDocuments(rows) {
     const out = [];
     for (const r of rows) {
@@ -196,7 +243,6 @@ class JT_ClassAssigner extends Application {
         const doc = await fromUuid(r.uuid);
         if (!doc || doc.documentName !== "Item") continue;
         const data = doc.toObject();
-        // Set both fields to cover schema variants
         foundry.utils.setProperty(data, "system.level", r.level);
         foundry.utils.setProperty(data, "system.levels", r.level);
         out.push({ data, level: r.level, name: data.name });
@@ -208,40 +254,32 @@ class JT_ClassAssigner extends Application {
   }
 
   _sumLevels(rows) { return rows.reduce((t,r)=> t + (parseInt(r.level,10)||0), 0); }
-  /** Assign to target actor with permission guard */
-  async _assign(html) {
-    const target = await window.AAM?.resolveTargetActor?.();
-    if (!target) return ui.notifications.error("No target Actor found (select a token or set a Target Actor).");
 
-    // PERMISSION GUARD: require OWNER to modify
-    if (!this._isOwner(target)) {
-      return ui.notifications.error("You must own the target Actor to assign classes.");
-    }
+  async _assign(html) {
+    const target = await this._getTargetActor();
+    if (!target) return ui.notifications.error("No target Actor found (select a token or set a Target Actor).");
+    if (!this._isOwner(target)) return ui.notifications.error("You must own the target Actor to assign classes.");
 
     const selections = this._readSelections(html);
     if (!selections.length) return ui.notifications.warn("Pick at least one class and level.");
 
-    // Level cap enforcement
     const enforce = html.find('input[name="enforceCap"]')[0]?.checked ?? true;
     let cap = 20; try { cap = Number(game.settings.get("axeclefts-adventurers-minions", "levelCap")) || 20; } catch {}
-    const total = this._sumLevels(selections);
-    if (enforce && total > cap) {
-      return ui.notifications.error(`Total levels (${total}) exceed cap (${cap}).`);
-    }
+    const { total: existingTotal } = this._readExistingClasses(target);
+    const newTotal = this._sumLevels(selections);
+    const wipeFirst = html.find('input[name="wipeFirst"]')[0]?.checked ?? false;
+    const effExisting = wipeFirst ? 0 : existingTotal;
+    const combined = effExisting + newTotal;
+    if (enforce && combined > cap) return ui.notifications.error(`Total levels (${combined}) exceed cap (${cap}).`);
 
-    // Fetch class documents
     const docs = await this._fetchClassDocuments(selections);
     if (!docs.length) return ui.notifications.error("No class documents resolved from your selection.");
 
-    const wipeFirst = html.find('input[name="wipeFirst"]')[0]?.checked ?? false;
-
-    // Remove existing class items if requested
     if (wipeFirst) {
       const toDelete = target.items.filter(i => String(i.type).toLowerCase() === "class").map(i => i.id);
       if (toDelete.length) await target.deleteEmbeddedDocuments("Item", toDelete);
     }
 
-    // Upsert the selected classes
     for (const { data, level, name } of docs) {
       const existing = target.items.find(i => String(i.type).toLowerCase() === "class" && i.name === name);
       if (existing) {
@@ -250,12 +288,14 @@ class JT_ClassAssigner extends Application {
         patch["system.levels"] = level;
         await existing.update(patch);
       } else {
-        delete data._id; // ensure new embedded
+        delete data._id;
         await target.createEmbeddedDocuments("Item", [data]);
       }
     }
 
-    // Chat summary
+    const doRefactor = game.settings.get("axeclefts-adventurers-minions", "refactorAttacks") === true;
+    await window.AAM.refreshAttacks(target, { refactor: doRefactor });
+
     const list = docs.map(d => `• ${this._ESC(d.name)}: <b>${d.level}</b>`).join("<br/>");
     ui.notifications.info("Classes assigned.");
     ChatMessage.create({
@@ -263,47 +303,69 @@ class JT_ClassAssigner extends Application {
       speaker: ChatMessage.getSpeaker({ actor: target }),
       content: `<div class="mono"><b>Class Assigner</b><div>${list}</div></div>`
     });
+
+    const ex = this._readExistingClasses(target);
+    this._renderExistingUI(this._htmlRef, ex);
+    this._updateSummary(this._htmlRef, { existingTotal: ex.total, newTotal: 0, cap, wipeFirst: false, enforce });
   }
 
   activateListeners(html) {
     super.activateListeners(html);
+    this._htmlRef = html;
 
-    // If template already injected options, leave them; otherwise inject from data context
-    const baseOpt  = html.find('select[name="baseSel"] optgroup[label="Base"]').html();
-    const prestOpt = html.find('select[name="prestigeSel"] optgroup[label="Prestige"]').html();
-    if (!baseOpt || !prestOpt) {
-      // Use the values returned by getData (handled by the template engine)
-      const data = this.object ?? {};
-      this._injectInitialOptions(html, data.baseOptions, data.prestigeOptions);
-    }
+    // 1) Load & inject options AFTER render (fixes empty lists)
+    (async () => {
+      try {
+        const opts = await this._loadClassOptions();
+        this._injectInitialOptions(html, opts);
+        this._applyExtraOptionsGrouped(html, opts);   // << grouped extras
 
-    // Unify extras
-    this._applyOptionsToAllSelects(html);
+        // make sure toggles reflect enabled selects
+        ["useMinion","usePrestige","useRacial"].forEach(n=>{
+          const on = !!html.find(`input[name="${n}"]`)[0]?.checked;
+          const sel = n==="useMinion" ? "minionSel" : n==="usePrestige" ? "prestigeSel" : "racialSel";
+          html.find(`select[name="${sel}"]`).prop("disabled", !on);
+          html.find(`input[name="${sel.replace("Sel","Lvl")}"]`).prop("disabled", !on);
+        });
+      } catch (e) {
+        console.error("ClassAssigner | failed to load options", e);
+      }
+    })();
 
-    // Toggle prestige block enable/disable
-    const $usePrestige = html.find('input[name="usePrestige"]');
-    const applyPrestVis = () => {
-      const on = $usePrestige[0]?.checked ?? false;
-      html.find('select[name="prestigeSel"]').prop("disabled", !on);
-      html.find('input[name="prestigeLvl"]').prop("disabled", !on);
+    // 2) Toggle enable/disable
+    const bindToggle = (chk, sel, lvl) => {
+      const apply = () => {
+        const on = !!(chk[0]?.checked);
+        sel.prop("disabled", !on);
+        lvl.prop("disabled", !on);
+      };
+      chk.on("change", apply); apply();
     };
-    $usePrestige.on("change", applyPrestVis);
-    applyPrestVis();
+    bindToggle(html.find('input[name="useMinion"]'),   html.find('select[name="minionSel"]'),   html.find('input[name="minionLvl"]'));
+    bindToggle(html.find('input[name="usePrestige"]'), html.find('select[name="prestigeSel"]'), html.find('input[name="prestigeLvl"]'));
+    bindToggle(html.find('input[name="useRacial"]'),   html.find('select[name="racialSel"]'),   html.find('input[name="racialLvl"]'));
 
-    // Wire search filter
+    // 3) Search filter
     this._wireSearch(html);
 
-    // Running total summary
-    const $sum = html.find("#jt-level-summary b");
-    const updateTotal = () => {
-      const rows = this._readSelections(html);
-      const total = this._sumLevels(rows);
-      $sum.text(String(total));
-    };
-    html.find('input[type="number"], select').on("input change", updateTotal);
-    updateTotal();
+    // 4) Existing snapshot + live summary
+    const tSync = this._getTargetActorSync?.();
+    const existing = this._readExistingClasses(tSync);
+    this._renderExistingUI(html, existing);
 
-    // Assign
+    const cap = Number(this.object?.levelCap ?? 20);
+    const updateSummaryLive = () => {
+      const rows = this._readSelections(html);
+      const newTotal = this._sumLevels(rows);
+      const wipeFirst = html.find('input[name="wipeFirst"]')[0]?.checked ?? false;
+      const enforce = html.find('input[name="enforceCap"]')[0]?.checked ?? true;
+      const { total: existingTotal } = this._readExistingClasses(this._getTargetActorSync?.());
+      this._updateSummary(html, { existingTotal, newTotal, cap, wipeFirst, enforce });
+    };
+    html.find('input[type="number"], select, input[type="checkbox"], input[name="search"]').on("input change", updateSummaryLive);
+    updateSummaryLive();
+
+    // 5) Assign
     html.find('[data-action="assign"]').on("click", () => this._assign(html));
   }
 }

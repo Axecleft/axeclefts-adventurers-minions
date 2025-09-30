@@ -5,6 +5,18 @@
   window.AAM.MOD_ID = MOD_ID;
 
   /* ========= Settings ========= */
+  // Register world setting: whether AAM should refactor attack items after changes
+  Hooks.once("init", () => {
+    const MODID = "axeclefts-adventurers-minions";
+    game.settings.register(MODID, "refactorAttacks", {
+      name: "AAM: Refactor attacks after stat/class changes",
+      hint: "When enabled, AAM will try to normalize attack items (use BAB, pick STR/DEX, clear flat bonuses) after abilities/classes are updated. Leave off if you prefer the system or other modules to control attack math.",
+      scope: "world",
+      config: true,
+      default: false,
+      type: Boolean
+    });
+  });
   Hooks.once("init", () => {
     try {
       if (!game.settings.settings.has?.(`${MOD_ID}.customStatArray`)) {
@@ -396,3 +408,117 @@
   Hooks.once("ready", () => { JT_injectCriticalFormStyles(); syncThemeWithD35E(); });
   Hooks.on("canvasReady", () => syncThemeWithD35E());
 })();
+
+/* === Manual resize for AAM Hub (uses the little corner handle) === */
+(function () {
+  function wireAamhubResize(app, html) {
+    const $handle = html.find('[data-resize-handle]');
+    if (!$handle.length) return;
+
+    // Avoid double-binding if re-rendered
+    if ($handle.data('jtResizeWired')) return;
+    $handle.data('jtResizeWired', true);
+
+    let startX, startY, startW, startH;
+    const MIN_W = 560;   // tweak if you want smaller minimums
+    const MIN_H = 420;
+
+    const onMove = (ev) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      const w  = Math.max(MIN_W, startW + dx);
+      const h  = Math.max(MIN_H, startH + dy);
+      // Foundry will handle window chrome + content sizing
+      app.setPosition({ width: w, height: h });
+    };
+
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.classList.remove('jt-resizing');
+    };
+
+    $handle.on('mousedown.jtResize', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      // starting mouse + window sizes
+      const pos = app.position || {};
+      startX = ev.clientX;
+      startY = ev.clientY;
+      startW = Number(pos.width)  || html.closest('.window-app').outerWidth()  || 720;
+      startH = Number(pos.height) || html.closest('.window-app').outerHeight() || 520;
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+      document.body.classList.add('jt-resizing');
+    });
+  }
+
+  // Wire on render of the Hub app
+  Hooks.on('renderJT_Aamhub', (app, html) => wireAamhubResize(app, html));
+})();
+/* === AAM: Attack Refresh / (optional) Refactor === */
+window.AAM ||= {};
+
+/**
+ * Refresh (and optionally refactor) attacks after stats/classes change.
+ * @param {Actor} actor
+ * @param {object} opts
+ * @param {boolean} [opts.refactor=false]  set true to attempt opinionated cleanup
+ */
+window.AAM.refreshAttacks = async function(actor, { refactor=false } = {}) {
+  if (!actor) return;
+
+  // 1) Let the system recompute derived data (BAB, ability mods, size, etc.)
+  try { actor.prepareData?.(); } catch {}
+  try { actor.prepareDerivedData?.(); } catch {}
+
+  // 2) Optional: normalize weapon/attack items (guarded; best-effort)
+  if (refactor) {
+    const items = actor.items.filter(i => {
+      const t = String(i.type || "").toLowerCase();
+      return t.includes("weapon") || t.includes("attack");
+    });
+
+    for (const it of items) {
+      const sys = it.system || {};
+      const patch = {};
+
+      // Heuristic: ranged if flagged or significant range
+      const flags = sys?.properties || sys?.props || {};
+      const rangeVal = Number(sys?.range?.value ?? sys?.range ?? NaN);
+      const isRanged = (flags.ranged === true) || (Number.isFinite(rangeVal) && rangeVal > 5) || sys?.isRanged === true;
+      const isFinesse = !!(flags.finesse || flags.fin);
+
+      const ability = isRanged ? "dex" : (isFinesse ? "dex" : "str");
+
+      // Try common schema spots
+      if (sys.attackAbility !== undefined) patch["system.attackAbility"] = ability;
+      else if (sys.ability !== undefined)  patch["system.ability"]       = ability;
+      else if (sys.attack?.ability !== undefined) patch["system.attack.ability"] = ability;
+
+      // Prefer using BAB if toggle exists
+      if (sys.useBab !== undefined)         patch["system.useBab"] = true;
+      if (sys.attack?.useBab !== undefined) patch["system.attack.useBab"] = true;
+
+      // Clear flat manual bonuses if present (let system compute)
+      if (typeof sys.attackBonus === "number") patch["system.attackBonus"] = 0;
+      if (sys.attack?.bonus !== undefined)     patch["system.attack.bonus"] = 0;
+
+      // Seed parts if array exists and is empty (defensive)
+      if (Array.isArray(sys?.attackBonus?.parts) && !sys.attackBonus.parts.length) {
+        patch["system.attackBonus.parts"] = [
+          ["@bab", "BAB"],
+          [`@abilities.${ability}.mod`, ability.toUpperCase()]
+        ];
+      }
+
+      if (Object.keys(patch).length) {
+        try { await it.update(patch); } catch (e) { console.warn("AAM refreshAttacks: item patch failed", it, e); }
+      }
+    }
+  }
+
+  // 3) Rerender sheet to reflect changes immediately
+  try { actor.render?.(true); } catch {}
+};

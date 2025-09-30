@@ -6,6 +6,7 @@
     <span class="jt-muted">Use the search to filter all dropdowns.</span>
   </div>
 
+  <!-- BASE -->
   <section class="jt-card jt-grid" style="gap:8px;">
     <div class="jt-title" style="font-size:14px;">Base Class</div>
     <div class="jt-row">
@@ -18,21 +19,55 @@
     </div>
   </section>
 
+  <!-- MINION -->
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-row" style="justify-content:space-between; align-items:center;">
+      <div class="jt-title" style="font-size:14px;">Minion Class</div>
+      <label class="jt-muted"><input type="checkbox" name="useMinion" /> Use minion</label>
+    </div>
+    <div class="jt-row">
+      <select class="jt-select class-select" name="minionSel" disabled>
+        <optgroup label="Minion">
+          {{{minionOptions}}}
+        </optgroup>
+      </select>
+      <input class="jt-input" type="number" name="minionLvl" min="1" placeholder="Level" disabled />
+    </div>
+  </section>
+
+  <!-- PRESTIGE -->
   <section class="jt-card jt-grid" style="gap:8px;">
     <div class="jt-row" style="justify-content:space-between; align-items:center;">
       <div class="jt-title" style="font-size:14px;">Prestige Class</div>
       <label class="jt-muted"><input type="checkbox" name="usePrestige" /> Use prestige</label>
     </div>
     <div class="jt-row">
-      <select class="jt-select class-select" name="prestigeSel">
+      <select class="jt-select class-select" name="prestigeSel" disabled>
         <optgroup label="Prestige">
           {{{prestigeOptions}}}
         </optgroup>
       </select>
-      <input class="jt-input" type="number" name="prestigeLvl" min="1" placeholder="Level" />
+      <input class="jt-input" type="number" name="prestigeLvl" min="1" placeholder="Level" disabled />
     </div>
   </section>
 
+  <!-- RACIAL HD -->
+  <section class="jt-card jt-grid" style="gap:8px;">
+    <div class="jt-row" style="justify-content:space-between; align-items:center;">
+      <div class="jt-title" style="font-size:14px;">Racial HD</div>
+      <label class="jt-muted"><input type="checkbox" name="useRacial" /> Use racial HD</label>
+    </div>
+    <div class="jt-row">
+      <select class="jt-select class-select" name="racialSel" disabled>
+        <optgroup label="Racial">
+          {{{racialOptions}}}
+        </optgroup>
+      </select>
+      <input class="jt-input" type="number" name="racialLvl" min="1" placeholder="Level" disabled />
+    </div>
+  </section>
+
+  <!-- EXTRA -->
   <section class="jt-card jt-grid" style="gap:8px;">
     <div class="jt-title" style="font-size:14px;">Additional Classes (up to 4)</div>
     <div id="jt-extra-rows">
@@ -40,16 +75,24 @@
     </div>
   </section>
 
+  <!-- EXISTING + CAP / SUMMARY -->
   <section class="jt-card jt-grid" style="gap:8px;">
     <div class="jt-row" style="gap:16px; align-items:center;">
       <label class="jt-muted"><input type="checkbox" name="wipeFirst" /> Remove existing classes first</label>
       <label class="jt-muted"><input type="checkbox" name="enforceCap" checked /> Enforce total level cap</label>
-      <span id="jt-level-summary" class="mono" style="margin-left:auto;">Total Levels: <b>0</b> / Cap 20</span>
+      <span id="jt-level-summary" class="mono" style="margin-left:auto;">
+        Existing: <b id="jt-existing-count">0</b> | New: <b id="jt-new-count">0</b> |
+        Total: <b id="jt-total-count">0</b> / Cap {{levelCap}}
+      </span>
+    </div>
+
+    <div id="jt-existing-classes" class="jt-muted" style="font-size:12px;">
+      <!-- populated by JS -->
     </div>
   </section>
 
   <div class="jt-row" style="justify-content:flex-end;">
-    <button type="button" class="jt-button" data-action="assign">Assign to Selected Actor</button>
+    <button type="button" class="jt-button" data-action="assign">Assign to Target Actor</button>
   </div>
 
   {{#if _emptyMessage}}

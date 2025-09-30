@@ -52,3 +52,5 @@
 
 .jt-muted { color: var(--jt-muted); font-size: 12px; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+body.jt-resizing { user-select: none !important; }

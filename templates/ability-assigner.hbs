@@ -1,115 +1,197 @@
 <div class="jt-app jt-card jt-grid" style="gap:12px;">
-  <div class="jt-row" style="gap:12px; align-items:center;">
+  <div class="jt-title">Ability Assigner</div>
+
+  <!-- Method picker -->
+  <div class="jt-row" style="gap:8px; align-items:center;">
     <label style="min-width:7rem;">Method</label>
     <select class="jt-select" name="method">
-      <option value="arrays">Array (preset/custom)</option>
+      <option value="arrays">Array Preset</option>
       <option value="pointbuy">Point Buy</option>
       <option value="roll">Roll (3d6 / 4d6dl)</option>
+      <option value="manual">Manual Input</option>
     </select>
 
-    <span class="jt-muted" style="margin-left:auto;">Preview:</span>
-    <span id="jt-ability-preview" class="mono">—</span>
+    <!-- Primary / Secondary used by Arrays & Roll (ignored by Manual / PointBuy) -->
+    <label class="jt-muted" style="margin-left:auto;">Primary</label>
+    <select class="jt-select" name="primary">
+      <option value="str">STR</option><option value="dex">DEX</option><option value="con">CON</option>
+      <option value="int">INT</option><option value="wis">WIS</option><option value="cha">CHA</option>
+    </select>
+    <label class="jt-muted">Secondary</label>
+    <select class="jt-select" name="secondary">
+      <option value="">—</option>
+      <option value="str">STR</option><option value="dex">DEX</option><option value="con">CON</option>
+      <option value="int">INT</option><option value="wis">WIS</option><option value="cha">CHA</option>
+    </select>
   </div>
 
-  {{!-- Make the manual map toggle global (works for Arrays + Roll; ignored for Point Buy) --}}
-  <div class="jt-row" style="gap:10px;">
-    <label><input type="checkbox" name="manualMap" /> Manual map six numbers</label>
-    <span class="jt-muted">Otherwise: highest → Primary, second → Secondary, rest shuffled.</span>
-  </div>
-
-  <!-- ARRAYS PANE -->
-  <section data-pane="arrays" class="jt-card jt-grid" style="gap:10px;">
-    <div class="jt-row" style="gap:10px;">
+  <!-- ARRAYS -->
+  <section class="jt-card jt-grid" data-pane="arrays" style="gap:8px;">
+    <div class="jt-row" style="gap:8px; align-items:center;">
       <label style="min-width:7rem;">Preset</label>
       <select class="jt-select" name="arrayPreset">
         <option value="low">Low (13,12,11,10,9,8)</option>
         <option value="standard" selected>Standard (15,14,13,12,10,8)</option>
         <option value="high">High (16,15,14,12,10,8)</option>
-        <option value="custom">Custom</option>
+        <option value="custom">Custom…</option>
       </select>
-    </div>
-    <div class="jt-row">
-      <input class="jt-input mono" type="text" name="customArray" placeholder="e.g. 16, 15, 14, 12, 10, 8" />
-      <button type="button" class="jt-button" data-action="saveCustom">Save Custom</button>
-    </div>
+      <input class="jt-input mono" type="text" name="customArray" placeholder="Enter 6 comma/space-separated numbers (e.g. 18, 16, 14, 12, 10, 8)" style="flex:1;" disabled />
+      <button type="button" class="jt-button" data-action="saveCustom" title="Save custom array to world settings" disabled>Save</button>
 
-    <div class="jt-row" style="gap:10px;">
-      <label style="min-width:7rem;">Primary</label>
-      <select class="jt-select" name="primary">
-        <option value="str" selected>STR</option><option value="dex">DEX</option>
-        <option value="con">CON</option><option value="int">INT</option>
-        <option value="wis">WIS</option><option value="cha">CHA</option>
-      </select>
-
-      <label style="min-width:7rem;">Secondary</label>
-      <select class="jt-select" name="secondary">
-        <option value="">(none)</option>
-        <option value="str">STR</option><option value="dex">DEX</option>
-        <option value="con">CON</option><option value="int">INT</option>
-        <option value="wis">WIS</option><option value="cha">CHA</option>
-      </select>
+      <label class="jt-muted" style="margin-left:auto;">
+        <input type="checkbox" name="manualMap" />
+        Manual Mapping
+      </label>
     </div>
   </section>
 
-  <!-- MANUAL MAP (only for arrays/roll when enabled; JS toggles visibility) -->
-  <section data-pane="manualMap" class="jt-card jt-grid" style="gap:8px; display:none;">
-    <div class="jt-title">Manual Mapping</div>
-    <div class="jt-grid" style="grid-template-columns: repeat(6, 1fr); gap:8px;">
-      <div><label class="jt-muted">STR</label><select class="jt-select" name="map_str"></select></div>
-      <div><label class="jt-muted">DEX</label><select class="jt-select" name="map_dex"></select></div>
-      <div><label class="jt-muted">CON</label><select class="jt-select" name="map_con"></select></div>
-      <div><label class="jt-muted">INT</label><select class="jt-select" name="map_int"></select></div>
-      <div><label class="jt-muted">WIS</label><select class="jt-select" name="map_wis"></select></div>
-      <div><label class="jt-muted">CHA</label><select class="jt-select" name="map_cha"></select></div>
+  <!-- POINT BUY -->
+  <section class="jt-card jt-grid" data-pane="pointbuy" style="gap:8px; display:none;">
+    <div class="jt-row" style="gap:12px; align-items:center;">
+      <label>Budget</label>
+      <input class="jt-input" type="number" name="pbBudget" value="28" min="0" style="width:6rem;" />
+      <label>Min</label>
+      <input class="jt-input" type="number" name="pbMin" value="8" style="width:5rem;" />
+      <label>Max</label>
+      <input class="jt-input" type="number" name="pbMax" value="18" style="width:5rem;" />
+      <span class="mono jt-muted" style="margin-left:auto;">Remaining: <b id="pb-remaining">28</b></span>
+      <div class="jt-row" style="gap:6px;">
+        <button type="button" class="jt-button" data-pb-preset="25">25</button>
+        <button type="button" class="jt-button" data-pb-preset="28">28</button>
+        <button type="button" class="jt-button" data-pb-preset="32">32</button>
+      </div>
     </div>
-    <div class="jt-muted">Choose each number exactly once.</div>
+
+    <div class="jt-grid" style="grid-template-columns: repeat(3, 1fr); gap:8px;">
+      {{!-- STR --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">STR</label>
+        <button type="button" class="jt-button" data-pb-dec="str" title="Decrease">−</button>
+        <input class="jt-input" type="number" name="pb_str" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="str" title="Increase">+</button>
+      </div>
+      {{!-- DEX --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">DEX</label>
+        <button type="button" class="jt-button" data-pb-dec="dex">−</button>
+        <input class="jt-input" type="number" name="pb_dex" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="dex">+</button>
+      </div>
+      {{!-- CON --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CON</label>
+        <button type="button" class="jt-button" data-pb-dec="con">−</button>
+        <input class="jt-input" type="number" name="pb_con" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="con">+</button>
+      </div>
+      {{!-- INT --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">INT</label>
+        <button type="button" class="jt-button" data-pb-dec="int">−</button>
+        <input class="jt-input" type="number" name="pb_int" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="int">+</button>
+      </div>
+      {{!-- WIS --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">WIS</label>
+        <button type="button" class="jt-button" data-pb-dec="wis">−</button>
+        <input class="jt-input" type="number" name="pb_wis" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="wis">+</button>
+      </div>
+      {{!-- CHA --}}
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CHA</label>
+        <button type="button" class="jt-button" data-pb-dec="cha">−</button>
+        <input class="jt-input" type="number" name="pb_cha" value="8" min="1" style="width:5rem;" />
+        <button type="button" class="jt-button" data-pb-inc="cha">+</button>
+      </div>
+    </div>
   </section>
 
-  <!-- POINT BUY PANE -->
-  <section data-pane="pointbuy" class="jt-card jt-grid" style="gap:10px; display:none;">
-    <div class="jt-row" style="gap:10px;">
-      <label>Budget</label><input class="jt-input" name="pbBudget" type="number" value="28" />
-      <label>Min</label><input class="jt-input" name="pbMin" type="number" value="8" />
-      <label>Max</label><input class="jt-input" name="pbMax" type="number" value="18" />
-      <span class="jt-muted">Remaining: <b id="pb-remaining">28</b></span>
-    </div>
-
-    <div class="jt-grid" style="grid-template-columns: repeat(6, 1fr); gap:8px;">
-      {{#each (array "str" "dex" "con" "int" "wis" "cha") as |a|}}
-        <div class="jt-card jt-grid" style="gap:6px;">
-          <div class="jt-row" style="justify-content:space-between;">
-            <span class="jt-title" style="font-size:14px;">{{upper a}}</span>
-            <div class="jt-row" style="gap:6px;">
-              <button type="button" class="jt-button" data-pb-dec="{{a}}">–</button>
-              <button type="button" class="jt-button" data-pb-inc="{{a}}">+</button>
-            </div>
-          </div>
-          <input class="jt-input" type="number" name="pb_{{a}}" value="8" />
-        </div>
-      {{/each}}
-    </div>
-
-    <div class="jt-row" style="gap:8px;">
-      <button type="button" class="jt-button" data-pb-preset="25">Preset 25</button>
-      <button type="button" class="jt-button" data-pb-preset="28">Preset 28</button>
-      <button type="button" class="jt-button" data-pb-preset="32">Preset 32</button>
-    </div>
-  </section>
-
-  <!-- ROLL PANE -->
-  <section data-pane="roll" class="jt-card jt-grid" style="gap:10px; display:none;">
-    <div class="jt-row" style="gap:10px;">
-      <label style="min-width:7rem;">Mode</label>
+  <!-- ROLL -->
+  <section class="jt-card jt-grid" data-pane="roll" style="gap:8px; display:none;">
+    <div class="jt-row" style="gap:8px; align-items:center;">
+      <label style="min-width:7rem;">Roll Mode</label>
       <select class="jt-select" name="rollMode">
         <option value="4d6dl" selected>4d6 drop lowest</option>
         <option value="3d6">3d6</option>
       </select>
-      <button type="button" class="jt-button" data-action="rollNow">Roll</button>
+      <button type="button" class="jt-button" data-action="rollNow">Roll Now</button>
+      <input class="jt-input mono" type="text" name="rolledArray" placeholder="Rolled values will appear here (or paste a set of 6 numbers)" style="flex:1;" />
+
+      <label class="jt-muted" style="margin-left:auto;">
+        <input type="checkbox" name="manualMap" />
+        Manual Mapping
+      </label>
     </div>
-    <input class="jt-input mono" type="text" name="rolledArray" placeholder="e.g. 16, 14, 14, 12, 10, 8" />
   </section>
 
-  <div class="jt-row" style="justify-content:flex-end; gap:10px;">
-    <button type="button" class="jt-button" data-action="assign">Assign to Selected Actor</button>
-  </div>
+  <!-- MANUAL INPUT -->
+  <section class="jt-card jt-grid" data-pane="manual" style="gap:8px; display:none;">
+    <div class="jt-grid" style="grid-template-columns: repeat(3, 1fr); gap:8px;">
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">STR</label>
+        <input class="jt-input" type="number" name="mi_str" placeholder="—" />
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">DEX</label>
+        <input class="jt-input" type="number" name="mi_dex" placeholder="—" />
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CON</label>
+        <input class="jt-input" type="number" name="mi_con" placeholder="—" />
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">INT</label>
+        <input class="jt-input" type="number" name="mi_int" placeholder="—" />
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">WIS</label>
+        <input class="jt-input" type="number" name="mi_wis" placeholder="—" />
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CHA</label>
+        <input class="jt-input" type="number" name="mi_cha" placeholder="—" />
+      </div>
+    </div>
+    <div class="jt-muted">Enter all six values; Primary/Secondary and Manual Mapping are not used in Manual mode.</div>
+  </section>
+
+  <!-- MANUAL MAP (Arrays/Roll only) -->
+  <section class="jt-card jt-grid" data-pane="manualMap" style="gap:8px; display:none;">
+    <div class="jt-title" style="font-size:14px;">Manual Mapping</div>
+    <div class="jt-grid" style="grid-template-columns: repeat(3, 1fr); gap:8px;">
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">STR</label>
+        <select class="jt-select" name="map_str"><option value="">—</option></select>
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">DEX</label>
+        <select class="jt-select" name="map_dex"><option value="">—</option></select>
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CON</label>
+        <select class="jt-select" name="map_con"><option value="">—</option></select>
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">INT</label>
+        <select class="jt-select" name="map_int"><option value="">—</option></select>
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">WIS</label>
+        <select class="jt-select" name="map_wis"><option value="">—</option></select>
+      </div>
+      <div class="jt-row" style="gap:6px; align-items:center;">
+        <label style="width:3rem;">CHA</label>
+        <select class="jt-select" name="map_cha"><option value="">—</option></select>
+      </div>
+    </div>
+    <div class="jt-muted">Choose each rolled/array value exactly once. <em>Tip:</em> Double-click a select to clear it.</div>
+  </section>
+
+  <!-- PREVIEW + ASSIGN -->
+  <section class="jt-card jt-row" style="gap:12px; align-items:center;">
+    <div class="mono jt-muted">Current six: <b id="jt-ability-preview">—</b></div>
+    <button type="button" class="jt-button" style="margin-left:auto;" data-action="assign">Assign to Target Actor</button>
+  </section>
 </div>
