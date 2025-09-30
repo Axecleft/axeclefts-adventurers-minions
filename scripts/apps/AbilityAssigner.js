@@ -94,6 +94,9 @@
       const actor = await window.AAM.resolveTargetActor();
       if (!actor) return ui.notifications.error("No target actor found. Use the Target Actor field (hub) or select a token.");
       const patch={system:{abilities:{}}}; for (const [k,v] of Object.entries(assign)) patch.system.abilities[k]={value:v};
+      if (!(actor?.testUserPermission?.(game.user, (foundry?.CONST?.DOCUMENT_OWNERSHIP_LEVELS?.OWNER ?? CONST.DOCUMENT_OWNERSHIP_LEVELS.OWNER)) ?? actor?.isOwner)) {
+      return ui.notifications.error("You must own the target Actor to assign ability scores.");
+      }
       await actor.update(patch);
       ui.notifications.info(`Ability scores assigned to ${actor.name}.`);
       const lines = Object.entries(assign).map(([a,v])=> `${a.toUpperCase()}: <b>${v}</b>`);

@@ -2,13 +2,13 @@
   "id": "axeclefts-adventurers-minions",
   "title": "Axecleft's Adventurer and Minion Generation Tools",
   "description": "A unified toolkit for D35E SRD PC/NPC creation.",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "compatibility": { "minimum": "11", "verified": "11.315" },
   "authors": [{ "name": "Axecleft", "url": "" }],
   "scripts": [
     "scripts/main.js",
-    "scripts/apps/ClassAssigner.js",
     "scripts/apps/AbilityAssigner.js",
+    "scripts/apps/ClassAssigner.js",
     "scripts/apps/aamhub.js"
   ],
   "styles": [
@@ -24,6 +24,8 @@
   "esmodules": [],
   "packs": [],
   "socket": false,
-  "manifest": "",
-  "download": ""
+  "manifest": "https://github.com/Axecleft/axeclefts-adventurers-minions/releases/download/1.0.0/module.json",
+  "download": "https://github.com/Axecleft/axeclefts-adventurers-minions/archive/refs/tags/1.0.0.zip"
 }
+
+
